@@ -15,7 +15,7 @@ func TestWriter(t *testing.T) {
 	}{
 		{
 			input:  "one two three",
-			output: "",
+			output: "one two three",
 		},
 		{
 			input:  "one two three\n",
@@ -27,7 +27,7 @@ func TestWriter(t *testing.T) {
 		},
 		{
 			input:  "one\r\ntwo\nthree",
-			output: "one\r\ntwo\n",
+			output: "one\r\ntwo\nthree",
 		},
 		{
 			input: "one\r\ntwo\nthree",
@@ -39,10 +39,34 @@ func TestWriter(t *testing.T) {
 		{
 			input: "one\r\ntwo\nthree",
 			editors: []editline.Editor{
-				editline.Replace("yes"),
-				editline.Replace("no"),
+				editline.ReplaceLiteral("yes"),
+				editline.ReplaceLiteral("no"),
 			},
-			output: "no\r\nno\n",
+			output: "no\r\nno\nno",
+		},
+		{
+			input: "one\r\ntwo\nthree",
+			editors: []editline.Editor{
+				editline.Prefix("t", editline.Remove()),
+			},
+			output: "one\r\n",
+		},
+		{
+			input: "one\r\ntwo\nthree",
+			editors: []editline.Editor{
+				editline.ReplaceRegexpString("o", "ee"),
+				editline.ReplaceRegexpString("ee", "oo"),
+			},
+			output: "oone\r\ntwoo\nthroo",
+		},
+		{
+			input: "one\r\ntwo\nthree",
+			editors: []editline.Editor{
+				editline.RegexpString("^t", editline.EditorFunc(func(line string) (string, editline.Action) {
+					return "yeah", editline.ReplaceAction
+				})),
+			},
+			output: "one\r\nyeah\nyeah",
 		},
 	}
 
@@ -52,7 +76,12 @@ func TestWriter(t *testing.T) {
 			w := editline.NewWriter(&out, tc.editors...)
 			n, err := w.Write([]byte(tc.input))
 			if err != nil {
-				t.Fatalf("got an error writing input: %v", err)
+				t.Fatalf("got an error writing: %v", err)
+			}
+
+			err = w.Flush()
+			if err != nil {
+				t.Fatalf("got an error flushing: %v", err)
 			}
 
 			if n != len(tc.input) {

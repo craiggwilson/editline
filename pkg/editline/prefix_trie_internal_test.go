@@ -29,6 +29,10 @@ func TestBuildPrefixTrie(t *testing.T) {
 			result: []Editor{editors[1]},
 		},
 		{
+			input:  "cat",
+			result: []Editor{editors[1]},
+		},
+		{
 			input:  "baabc",
 			result: []Editor{editors[1], editors[3], editors[4]},
 		},

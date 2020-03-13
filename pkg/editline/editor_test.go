@@ -31,7 +31,7 @@ func TestRegexp_Edit(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.pattern, func(t *testing.T) {
-			editor := editline.RegexpString(tc.pattern, editline.Replace("YAY!"))
+			editor := editline.RegexpString(tc.pattern, editline.ReplaceLiteral("YAY!"))
 			output, _ := editor.Edit(tc.input)
 			if output != tc.output {
 				t.Fatalf("expected output %q, but got %q", tc.output, output)

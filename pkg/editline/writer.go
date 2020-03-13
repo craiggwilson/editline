@@ -24,7 +24,13 @@ type Writer struct {
 
 // Flush writes any buffered data to the underlying io.Writer.
 func (w *Writer) Flush() error {
-	_, err := w.w.Write(w.buf)
+	var err error
+	if len(w.buf) > 0 {
+		line, remove := w.editLine(string(w.buf))
+		if !remove {
+			_, err = io.WriteString(w.w, line)
+		}
+	}
 	w.buf = nil
 	return err
 }
@@ -38,8 +44,6 @@ func (w *Writer) Write(p []byte) (int, error) {
 	nn := 0
 
 	for it.Next() {
-		start, finish := it.Range()
-
 		line := it.Line()
 		suffix := "\n"
 
@@ -58,27 +62,19 @@ func (w *Writer) Write(p []byte) (int, error) {
 			return nn, err
 		}
 
-		nn += finish - start - offset
+		nn += it.Len() - offset
 		offset = 0
 	}
 
-	it.buf = it.Remaining()
+	w.buf = it.Remaining()
 
 	return len(p), nil
 }
 
 func (w *Writer) editLine(line string) (string, bool) {
-	editors := w.editors.Get(line)
-	for _, editor := range editors {
-		result, action := editor.Edit(line)
-		switch action {
-		case ReplaceAction:
-			line = result
-		case RemoveAction:
-			return "", true
-		}
-	}
-	return line, false
+	editor := Combine(w.editors.Get(line)...)
+	line, action := editor.Edit(line)
+	return line, action == RemoveAction
 }
 
 type lineIter struct {
@@ -94,12 +90,12 @@ func (it *lineIter) Line() string {
 	return it.line
 }
 
-func (it *lineIter) Range() (int, int) {
-	return it.start, it.finish
+func (it *lineIter) Len() int {
+	return it.finish - it.start
 }
 
 func (it *lineIter) Remaining() []byte {
-	return it.buf[it.start:]
+	return it.buf[it.finish:]
 }
 
 func (it *lineIter) Next() bool {
@@ -107,7 +103,7 @@ func (it *lineIter) Next() bool {
 	for i := it.finish; i < len(it.buf); i++ {
 		if it.buf[i] == '\n' {
 			it.start, it.finish = it.finish, i+1
-			it.line = string(it.buf[it.start : it.finish-1])
+			it.line = string(it.buf[it.start:i])
 			return true
 		}
 	}
