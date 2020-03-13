@@ -6,16 +6,18 @@ import (
 )
 
 // NewWriter makes a Writer.
-func NewWriter(w io.Writer) *Writer {
+func NewWriter(w io.Writer, editors ...Editor) *Writer {
 	return &Writer{
-		w: w,
+		w:       w,
+		editors: buildPrefixTrie(editors),
 	}
 }
 
 // Writer wraps another io.Writer and adds editing capabilities
 // on a line by line basis.
 type Writer struct {
-	w io.Writer
+	w       io.Writer
+	editors *prefixTrie
 
 	buf []byte
 }
@@ -34,6 +36,7 @@ func (w *Writer) Write(p []byte) (int, error) {
 	it := lineIter{buf: append(w.buf, p...)}
 
 	nn := 0
+
 	for it.Next() {
 		start, finish := it.Range()
 
@@ -43,6 +46,11 @@ func (w *Writer) Write(p []byte) (int, error) {
 		if strings.HasSuffix(line, "\r") {
 			line = line[0 : len(line)-1]
 			suffix = "\r\n"
+		}
+
+		line, remove := w.editLine(line)
+		if remove {
+			continue
 		}
 
 		_, err := io.WriteString(w.w, line+suffix)
@@ -57,6 +65,20 @@ func (w *Writer) Write(p []byte) (int, error) {
 	it.buf = it.Remaining()
 
 	return len(p), nil
+}
+
+func (w *Writer) editLine(line string) (string, bool) {
+	editors := w.editors.Get(line)
+	for _, editor := range editors {
+		result, action := editor.Edit(line)
+		switch action {
+		case ReplaceAction:
+			line = result
+		case RemoveAction:
+			return "", true
+		}
+	}
+	return line, false
 }
 
 type lineIter struct {

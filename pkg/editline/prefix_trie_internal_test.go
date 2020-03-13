@@ -46,7 +46,7 @@ func TestBuildPrefixTrie(t *testing.T) {
 
 type testPrefixEditor string
 
-func (e testPrefixEditor) Edit(line string) (string, EditMode) {
+func (e testPrefixEditor) Edit(line string) (string, Action) {
 	panic("nah")
 }
 

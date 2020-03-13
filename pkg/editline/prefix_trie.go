@@ -6,7 +6,7 @@ func buildPrefixTrie(editors []Editor) *prefixTrie {
 	root := &prefixTrie{}
 	for i, editor := range editors {
 		prefix := ""
-		if pe, ok := editor.(PrefixEditor); ok {
+		if pe, ok := editor.(Prefixer); ok {
 			prefix = pe.Prefix()
 		}
 
